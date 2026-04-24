@@ -2,15 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { ACCOUNT_ITEMS, ReceiptAnalysis } from "@/types";
 
-const client = new Anthropic();
+type AllowedMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
+const ALLOWED_MEDIA_TYPES: AllowedMediaType[] = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+
+function normalizeMediaType(mt: string): AllowedMediaType {
+  if (mt === "image/jpg") return "image/jpeg";
+  if (ALLOWED_MEDIA_TYPES.includes(mt as AllowedMediaType)) return mt as AllowedMediaType;
+  return "image/jpeg";
+}
 
 export async function POST(req: NextRequest) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "APIキーが設定されていません" }, { status: 500 });
+  }
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
   try {
     const { imageBase64, mediaType } = await req.json();
 
     if (!imageBase64) {
       return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
     }
+
+    const safeMediaType = normalizeMediaType(mediaType || "image/jpeg");
 
     const accountList = ACCOUNT_ITEMS.join("、");
 
@@ -25,7 +46,7 @@ export async function POST(req: NextRequest) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType || "image/jpeg",
+                media_type: safeMediaType,
                 data: imageBase64,
               },
             },
