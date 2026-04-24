@@ -18,25 +18,29 @@ function normalizeMediaType(mt: string): AllowedMediaType {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+
+  if (!apiKey) {
     return NextResponse.json({ error: "APIキーが設定されていません" }, { status: 500 });
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   try {
+    const client = new Anthropic({ apiKey });
+
     const { imageBase64, mediaType } = await req.json();
 
     if (!imageBase64) {
       return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
     }
 
+    // base64文字列から改行・空白を除去（パターン検証エラーの防止）
+    const cleanBase64 = (imageBase64 as string).replace(/\s/g, "");
     const safeMediaType = normalizeMediaType(mediaType || "image/jpeg");
 
     const accountList = ACCOUNT_ITEMS.join("、");
 
     const message = await client.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [
         {
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest) {
               source: {
                 type: "base64",
                 media_type: safeMediaType,
-                data: imageBase64,
+                data: cleanBase64,
               },
             },
             {
@@ -85,7 +89,6 @@ ${accountList}
 
     const parsed = JSON.parse(jsonMatch[0]) as ReceiptAnalysis;
 
-    // Validate suggested accounts
     parsed.suggestedAccounts = (parsed.suggestedAccounts || [])
       .filter((a) => ACCOUNT_ITEMS.includes(a as (typeof ACCOUNT_ITEMS)[number]))
       .slice(0, 3) as typeof ACCOUNT_ITEMS[number][];
@@ -96,9 +99,10 @@ ${accountList}
 
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error("Analysis error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Analysis error:", message);
     return NextResponse.json(
-      { error: "解析に失敗しました。もう一度お試しください。" },
+      { error: `解析に失敗しました: ${message}` },
       { status: 500 }
     );
   }
