@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // Gemini呼び出し
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const accountList = ACCOUNT_ITEMS.join("、");
     const prompt = `このレシートを解析して、以下のJSON形式のみで返してください（説明文不要）：
