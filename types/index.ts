@@ -25,13 +25,14 @@ export type AccountItem = (typeof ACCOUNT_ITEMS)[number];
 
 export interface Expense {
   id: string;
+  userId: string;
   date: string;
   storeName: string;
   amount: number;
   accountItem: AccountItem;
   description: string;
   memo: string;
-  imageBase64?: string;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -41,4 +42,21 @@ export interface ReceiptAnalysis {
   amount: number;
   description: string;
   suggestedAccounts: AccountItem[];
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  plan: string;
+  planExpiresAt: string | null;
+  extraCredits: number;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
+export interface UsageInfo {
+  usedThisMonth: number;
+  monthlyLimit: number;
+  extraCredits: number;
+  planLabel: string;
 }

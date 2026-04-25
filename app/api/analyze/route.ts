@@ -1,109 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@/lib/supabase/server";
 import { ACCOUNT_ITEMS, ReceiptAnalysis } from "@/types";
-
-type AllowedMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-
-const ALLOWED_MEDIA_TYPES: AllowedMediaType[] = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-];
-
-function normalizeMediaType(mt: string): AllowedMediaType {
-  if (mt === "image/jpg") return "image/jpeg";
-  if (ALLOWED_MEDIA_TYPES.includes(mt as AllowedMediaType)) return mt as AllowedMediaType;
-  return "image/jpeg";
-}
+import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  // 認証チェック
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
-  if (!apiKey) {
-    return NextResponse.json({ error: "APIキーが設定されていません" }, { status: 500 });
+  // プロフィール取得
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan, extra_credits")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return NextResponse.json({ error: "プロフィールが見つかりません" }, { status: 500 });
+
+  // 今月の使用枚数チェック
+  const yearMonth = new Date().toISOString().slice(0, 7);
+  const { count: usedThisMonth } = await supabase
+    .from("usage_logs")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("year_month", yearMonth);
+
+  const planKey = (profile.plan || "none") as PlanKey;
+  const monthlyLimit = PLAN_CONFIG[planKey]?.monthlyLimit ?? PLAN_CONFIG.none.monthlyLimit;
+  const extraCredits = profile.extra_credits ?? 0;
+  const used = usedThisMonth ?? 0;
+
+  if (used >= monthlyLimit && extraCredits <= 0) {
+    const isTrialUser = planKey === "none";
+    return NextResponse.json({
+      error: isTrialUser
+        ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択してご利用ください。`
+        : `今月の解析上限（${monthlyLimit}枚）に達しました。追加クレジットをご購入ください。`,
+      limitReached: true,
+    }, { status: 403 });
   }
 
+  // Gemini APIキーチェック
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) return NextResponse.json({ error: "Gemini APIキーが設定されていません" }, { status: 500 });
+
   try {
-    const client = new Anthropic({ apiKey });
-
     const { imageBase64, mediaType } = await req.json();
+    if (!imageBase64) return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
 
-    if (!imageBase64) {
-      return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
-    }
-
-    // base64文字列から改行・空白を除去（パターン検証エラーの防止）
     const cleanBase64 = (imageBase64 as string).replace(/\s/g, "");
-    const safeMediaType = normalizeMediaType(mediaType || "image/jpeg");
+    const safeMimeType = (mediaType === "image/png" || mediaType === "image/webp") ? mediaType : "image/jpeg";
+
+    // Gemini呼び出し
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const accountList = ACCOUNT_ITEMS.join("、");
-
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: safeMediaType,
-                data: cleanBase64,
-              },
-            },
-            {
-              type: "text",
-              text: `このレシートを解析して、以下のJSON形式で情報を抽出してください。
-
-必ず以下のフォーマットのJSONのみを返してください（説明文は不要）：
+    const prompt = `このレシートを解析して、以下のJSON形式のみで返してください（説明文不要）：
 {
-  "date": "YYYY-MM-DD形式の日付（不明な場合は今日の日付）",
+  "date": "YYYY-MM-DD形式（不明なら今日の日付）",
   "storeName": "店名または会社名",
-  "amount": 合計金額の数値（税込み、数字のみ）,
-  "description": "主な品目や内容の説明",
-  "suggestedAccounts": ["最も適切な勘定科目", "2番目に適切な科目", "3番目に適切な科目"]
+  "amount": 合計金額の数値（税込、数字のみ）,
+  "description": "主な品目や内容",
+  "suggestedAccounts": ["最適な科目", "2番目", "3番目"]
 }
+suggestedAccountsは必ず以下から選択：${accountList}`;
 
-suggestedAccountsは必ず以下のリストから選んでください：
-${accountList}
+    const result = await model.generateContent([
+      { inlineData: { mimeType: safeMimeType, data: cleanBase64 } },
+      prompt,
+    ]);
 
-レシートの内容に基づいて最も適切な科目から順に3つ選んでください。`,
-            },
-          ],
-        },
-      ],
-    });
-
-    const content = message.content[0];
-    if (content.type !== "text") {
-      throw new Error("予期しないレスポンス形式");
-    }
-
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("JSONの抽出に失敗しました");
-    }
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("JSONの抽出に失敗しました");
 
     const parsed = JSON.parse(jsonMatch[0]) as ReceiptAnalysis;
 
     parsed.suggestedAccounts = (parsed.suggestedAccounts || [])
-      .filter((a) => ACCOUNT_ITEMS.includes(a as (typeof ACCOUNT_ITEMS)[number]))
+      .filter((a) => ACCOUNT_ITEMS.includes(a as typeof ACCOUNT_ITEMS[number]))
       .slice(0, 3) as typeof ACCOUNT_ITEMS[number][];
 
     if (parsed.suggestedAccounts.length === 0) {
       parsed.suggestedAccounts = ["雑費"];
     }
 
+    // 使用ログ記録
+    await supabase.from("usage_logs").insert({ user_id: user.id, year_month: yearMonth });
+
+    // 月間上限超過時はextra_creditsを消費
+    if (used >= monthlyLimit && extraCredits > 0) {
+      await supabase
+        .from("profiles")
+        .update({ extra_credits: extraCredits - 1 })
+        .eq("id", user.id);
+    }
+
     return NextResponse.json(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Analysis error:", message);
-    return NextResponse.json(
-      { error: `解析に失敗しました: ${message}` },
-      { status: 500 }
-    );
+    console.error("Analyze error:", message);
+    return NextResponse.json({ error: `解析に失敗しました: ${message}` }, { status: 500 });
   }
 }

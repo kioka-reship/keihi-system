@@ -12,8 +12,7 @@ export default function HomePage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setExpenses(loadExpenses());
-    setLoaded(true);
+    loadExpenses().then(setExpenses).finally(() => setLoaded(true));
   }, []);
 
   const currentYear = new Date().getFullYear();
@@ -39,7 +38,6 @@ export default function HomePage() {
         <p className="text-sm text-gray-500 mt-0.5">白色申告用 経費帳簿</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500">{currentMonth}月の経費合計</p>
@@ -57,7 +55,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex gap-3">
         <Link
           href="/register"
@@ -66,18 +63,14 @@ export default function HomePage() {
           ＋ 経費を登録
         </Link>
         <button
-          onClick={() => {
-            const filename = `経費帳簿_${currentYear}.csv`;
-            downloadCSV(thisYearExpenses, filename);
-          }}
-          className="flex-1 bg-white border border-gray-300 text-gray-700 rounded-2xl py-3.5 text-sm font-semibold text-center hover:bg-gray-50 transition-colors"
+          onClick={() => downloadCSV(thisYearExpenses, `経費帳簿_${currentYear}.csv`)}
+          className="flex-1 bg-white border border-gray-300 text-gray-700 rounded-2xl py-3.5 text-sm font-semibold hover:bg-gray-50 transition-colors"
           disabled={thisYearExpenses.length === 0}
         >
           ⬇ CSV出力
         </button>
       </div>
 
-      {/* Summary */}
       {loaded && (
         <div>
           <h2 className="text-sm font-semibold text-gray-600 mb-2">{currentYear}年 科目別合計</h2>
@@ -85,7 +78,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Recent */}
       {loaded && expenses.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-2">

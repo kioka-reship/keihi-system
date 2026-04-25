@@ -5,7 +5,11 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(gh auth *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(node -e \"const a = require\\('@anthropic-ai/sdk'\\); console.log\\(a.VERSION || 'version not exported'\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@anthropic-ai/sdk/package.json'\\).version\\)\")",
+      "Bash(xargs grep *)",
+      "Bash(node *)"
     ]
   }
 }

@@ -1,38 +1,37 @@
 import { Expense } from "@/types";
 
-const STORAGE_KEY = "keihi_expenses";
-
-export function loadExpenses(): Expense[] {
-  if (typeof window === "undefined") return [];
+export async function loadExpenses(): Promise<Expense[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch("/api/expenses");
+    if (!res.ok) return [];
+    return res.json();
   } catch {
     return [];
   }
 }
 
-export function saveExpenses(expenses: Expense[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-}
-
-export function addExpense(expense: Expense): void {
-  const expenses = loadExpenses();
-  expenses.unshift(expense);
-  saveExpenses(expenses);
-}
-
-export function updateExpense(updated: Expense): void {
-  const expenses = loadExpenses();
-  const index = expenses.findIndex((e) => e.id === updated.id);
-  if (index !== -1) {
-    expenses[index] = updated;
-    saveExpenses(expenses);
+export async function addExpense(expense: Omit<Expense, "id" | "userId" | "createdAt">): Promise<Expense | null> {
+  try {
+    const res = await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expense),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
   }
 }
 
-export function deleteExpense(id: string): void {
-  const expenses = loadExpenses();
-  saveExpenses(expenses.filter((e) => e.id !== id));
+export async function updateExpense(updated: Expense): Promise<void> {
+  await fetch(`/api/expenses/${updated.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updated),
+  });
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  await fetch(`/api/expenses/${id}`, { method: "DELETE" });
 }
