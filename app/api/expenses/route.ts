@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { AccountItem, Expense } from "@/types";
+import { getOrCreateProfile } from "@/lib/getOrCreateProfile";
 
 function mapRow(row: Record<string, unknown>): Expense {
   return {
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
+  // profilesレコードが存在しない場合は自動作成
+  await getOrCreateProfile(supabase, user.id, user.email ?? "");
 
   const body = await req.json() as Expense;
 

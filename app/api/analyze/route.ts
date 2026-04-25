@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { ACCOUNT_ITEMS, ReceiptAnalysis } from "@/types";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
+import { getOrCreateProfile } from "@/lib/getOrCreateProfile";
 
 export async function POST(req: NextRequest) {
   // 認証チェック
@@ -10,14 +11,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
-  // プロフィール取得
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan, extra_credits")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return NextResponse.json({ error: "プロフィールが見つかりません" }, { status: 500 });
+  // プロフィール取得（存在しない場合は自動作成）
+  const profile = await getOrCreateProfile(supabase, user.id, user.email ?? "");
 
   // 今月の使用枚数チェック
   const yearMonth = new Date().toISOString().slice(0, 7);
