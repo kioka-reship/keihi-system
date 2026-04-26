@@ -1,97 +1,88 @@
-import { NextRequest, NextResponse } from "next/server";
-import { stripe, getPlanFromPriceId } from "@/lib/stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+import { createClient } from '@supabase/supabase-js'
+import { getPlanFromPriceId } from '@/lib/stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const signature = req.headers.get("stripe-signature");
+  const body = await req.text()
+  const sig = req.headers.get('stripe-signature')!
 
-  if (!signature) {
-    return NextResponse.json({ error: "署名がありません" }, { status: 400 });
-  }
+  let event: Stripe.Event
 
-  let event;
   try {
     event = stripe.webhooks.constructEvent(
       body,
-      signature,
+      sig,
       process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (err) {
-    console.error("Webhook署名検証失敗:", err);
-    return NextResponse.json({ error: "署名検証失敗" }, { status: 400 });
+    )
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Webhook signature verification failed:', message)
+    return NextResponse.json({ error: message }, { status: 400 })
   }
-
-  const admin = createAdminClient();
 
   try {
     switch (event.type) {
-      // 決済完了 → プランをアクティベート
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const userId = session.metadata?.userId;
-        if (!userId || !session.subscription) break;
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        const customerId = session.customer as string
+        const subscriptionId = session.subscription as string
 
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
-        );
-        const priceId = subscription.items.data[0]?.price.id;
-        const plan = getPlanFromPriceId(priceId);
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        const priceId = subscription.items.data[0].price.id
+        const plan = getPlanFromPriceId(priceId)
 
-        await admin.from("profiles").update({
-          plan,
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: session.subscription as string,
-        }).eq("id", userId);
-        break;
+        await supabase
+          .from('profiles')
+          .update({
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            plan: plan,
+            monthly_count: 0,
+          })
+          .eq('stripe_customer_id', customerId)
+
+        console.log(`Plan updated to ${plan} for customer ${customerId}`)
+        break
       }
 
-      // サブスク変更（プラン変更・支払い失敗など）
-      case "customer.subscription.updated": {
-        const subscription = event.data.object;
-        const customerId = subscription.customer as string;
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
+        const priceId = subscription.items.data[0].price.id
+        const plan = getPlanFromPriceId(priceId)
 
-        const { data: profile } = await admin
-          .from("profiles")
-          .select("id")
-          .eq("stripe_customer_id", customerId)
-          .single();
-        if (!profile) break;
+        await supabase
+          .from('profiles')
+          .update({ plan })
+          .eq('stripe_customer_id', customerId)
 
-        const priceId = subscription.items.data[0]?.price.id;
-        const plan = subscription.status === "active"
-          ? getPlanFromPriceId(priceId)
-          : "none";
-
-        await admin.from("profiles").update({
-          plan,
-          stripe_subscription_id: subscription.id,
-        }).eq("id", profile.id);
-        break;
+        break
       }
 
-      // 解約完了 → noneに戻す
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object;
-        const customerId = subscription.customer as string;
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
 
-        const { data: profile } = await admin
-          .from("profiles")
-          .select("id")
-          .eq("stripe_customer_id", customerId)
-          .single();
-        if (!profile) break;
+        await supabase
+          .from('profiles')
+          .update({ plan: 'none', stripe_subscription_id: null })
+          .eq('stripe_customer_id', customerId)
 
-        await admin.from("profiles").update({
-          plan: "none",
-          stripe_subscription_id: null,
-        }).eq("id", profile.id);
-        break;
+        break
       }
     }
   } catch (err) {
-    console.error("Webhookハンドラエラー:", err);
+    console.error('Webhook handler error:', err)
+    return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true })
 }
