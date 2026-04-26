@@ -60,6 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/" className="text-gray-600 hover:text-blue-600">ホーム</Link>
                   <Link href="/register" className="text-gray-600 hover:text-blue-600">登録</Link>
                   <Link href="/list" className="text-gray-600 hover:text-blue-600">一覧</Link>
+                  <Link href="/plans" className="text-gray-600 hover:text-blue-600">プラン</Link>
                 </div>
                 <div className="text-xs text-gray-500 bg-gray-50 rounded-full px-3 py-1 border border-gray-200">
                   {nav.planLabel}｜
@@ -77,6 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 { href: "/", label: "ホーム", icon: "🏠" },
                 { href: "/register", label: "登録", icon: "➕" },
                 { href: "/list", label: "一覧", icon: "📋" },
+              { href: "/plans", label: "プラン", icon: "💳" },
               ].map((item) => (
                 <Link key={item.href} href={item.href}
                   className="flex-1 flex flex-col items-center py-2 text-gray-500 hover:text-blue-600 text-xs gap-0.5">

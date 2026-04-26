@@ -9,7 +9,6 @@ export function middleware(request: NextRequest) {
   }
 
   // Supabaseのセッションcookieが存在するかチェック
-  // （詳細なJWT検証はAPI routes・Serverコンポーネント側で実施）
   const hasSession = request.cookies
     .getAll()
     .some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
