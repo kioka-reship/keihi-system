@@ -1,22 +1,15 @@
 import Stripe from "stripe";
+import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-// Price ID → PlanKey のマッピング（サーバーサイドのみ使用）
-export function getPlanFromPriceId(priceId: string): string {
-  const map: Record<string, string> = {
-    [process.env.STRIPE_PRICE_LIGHT!]:    "light",
-    [process.env.STRIPE_PRICE_STANDARD!]: "standard",
-    [process.env.STRIPE_PRICE_PRO!]:      "pro",
-  };
-  return map[priceId] ?? "none";
+export function getPlanFromPriceId(priceId: string): PlanKey {
+  const entry = Object.entries(PLAN_CONFIG).find(
+    ([, config]) => config.stripePriceId === priceId
+  );
+  return (entry?.[0] as PlanKey) ?? "none";
 }
 
 export function getPriceIdFromPlan(planKey: string): string | null {
-  const map: Record<string, string> = {
-    light:    process.env.STRIPE_PRICE_LIGHT!,
-    standard: process.env.STRIPE_PRICE_STANDARD!,
-    pro:      process.env.STRIPE_PRICE_PRO!,
-  };
-  return map[planKey] ?? null;
+  return PLAN_CONFIG[planKey as PlanKey]?.stripePriceId ?? null;
 }
