@@ -20,8 +20,9 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Webhookのパスを認証チェックから除外する
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    '/((?!api/stripe/webhook|_next/static|_next/image|favicon.ico).*)',
   ],
 };
