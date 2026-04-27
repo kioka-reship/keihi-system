@@ -44,11 +44,15 @@ async function getNavData() {
     // adminクライアントでprofilesを取得（RLSをバイパス）
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const admin = createAdminClient();
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
       .from("profiles")
       .select("plan, monthly_count, extra_credits")
       .eq("id", user.id)
       .single();
+
+    console.log("[nav] user.id:", user.id);
+    console.log("[nav] profile:", profile);
+    console.log("[nav] profileError:", profileError);
 
     const plan = (profile?.plan || "none") as string;
     const limit = PLAN_LIMITS[plan] ?? 3;
