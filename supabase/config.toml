@@ -1,3 +1,6 @@
 [functions.reset-monthly-count]
 verify_jwt = false
 schedule = "0 0 1 * *"
+
+[functions.send-welcome-email]
+verify_jwt = false
