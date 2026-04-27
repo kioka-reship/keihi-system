@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ACCOUNT_ITEMS, ReceiptAnalysis } from "@/types";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 import { getOrCreateProfile } from "@/lib/getOrCreateProfile";
@@ -85,9 +86,16 @@ suggestedAccountsは必ず以下から選択：${accountList}`;
     // 使用ログ記録
     await supabase.from("usage_logs").insert({ user_id: user.id, year_month: yearMonth });
 
+    // profiles.monthly_count を +1（service_roleでRLSをバイパス）
+    const admin = createAdminClient();
+    await admin
+      .from("profiles")
+      .update({ monthly_count: used + 1 })
+      .eq("id", user.id);
+
     // 月間上限超過時はextra_creditsを消費
     if (used >= monthlyLimit && extraCredits > 0) {
-      await supabase
+      await admin
         .from("profiles")
         .update({ extra_credits: extraCredits - 1 })
         .eq("id", user.id);
