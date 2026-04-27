@@ -9,6 +9,14 @@ export const metadata: Metadata = {
   description: "白色申告用経費管理システム",
 };
 
+const PLAN_LIMITS: Record<string, number> = {
+  none:     3,
+  free:     3,
+  light:    20,
+  standard: 40,
+  pro:      120,
+};
+
 async function getNavData() {
   // 環境変数未設定やSupabase障害時にレイアウト自体がクラッシュしないよう守る
   try {
@@ -20,23 +28,20 @@ async function getNavData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const yearMonth = new Date().toISOString().slice(0, 7);
-    const [{ data: profile }, { count }] = await Promise.all([
-      supabase.from("profiles").select("plan, extra_credits").eq("id", user.id).single(),
-      supabase
-        .from("usage_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("year_month", yearMonth),
-    ]);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, monthly_count, extra_credits")
+      .eq("id", user.id)
+      .single();
 
-    const planKey = ((profile?.plan) || "none") as PlanKey;
+    const plan = (profile?.plan || "none") as string;
+    // "free" は "none" と同じ扱い
+    const planKey = (plan === "free" ? "none" : plan) as PlanKey;
     const config = PLAN_CONFIG[planKey] ?? PLAN_CONFIG.none;
 
     return {
-      email: user.email ?? "",
-      used: count ?? 0,
-      limit: config.monthlyLimit,
+      used: profile?.monthly_count ?? 0,
+      limit: PLAN_LIMITS[plan] ?? 3,
       extra: profile?.extra_credits ?? 0,
       planLabel: config.label,
     };
