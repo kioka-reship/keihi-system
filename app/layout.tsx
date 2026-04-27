@@ -46,7 +46,7 @@ async function getNavData() {
     const admin = createAdminClient();
     const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("plan, monthly_count, extra_credits")
+      .select("plan, monthly_count")
       .eq("id", user.id)
       .single();
 
@@ -63,7 +63,7 @@ async function getNavData() {
       planName: PLAN_NAMES[plan] ?? "お試し",
       limit,
       remaining,
-      extra: profile?.extra_credits ?? 0,
+      extra: 0,
     };
   } catch {
     return null;
