@@ -27,15 +27,24 @@ const PLAN_NAMES: Record<string, string> = {
 async function getNavData() {
   // 環境変数未設定やSupabase障害時にレイアウト自体がクラッシュしないよう守る
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
       return null;
     }
+
+    // cookieクライアントでユーザー認証のみ行う
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: profile } = await supabase
+    // adminクライアントでprofilesを取得（RLSをバイパス）
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    const { data: profile } = await admin
       .from("profiles")
       .select("plan, monthly_count, extra_credits")
       .eq("id", user.id)
