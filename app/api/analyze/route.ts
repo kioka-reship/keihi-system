@@ -31,11 +31,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const { imageBase64, mediaType, count: rawCount } = await req.json();
-    const count = Math.max(1, Math.floor(Number(rawCount) || 1));
+    // count=0 はバッチの後続呼び出し（初回でquota確保済み）→ 上限チェック・カウント更新をスキップ
+    const count = Math.max(0, Math.floor(Number(rawCount) || 1));
 
-    // monthly_count ベースで上限チェック
+    // monthly_count ベースで上限チェック（count>0 のときのみ）
     const remaining = monthlyLimit - used;
-    if (remaining < count) {
+    if (count > 0 && remaining < count) {
       return NextResponse.json({
         error: planKey === "none"
           ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択してご利用ください。`
@@ -88,16 +89,16 @@ suggestedAccountsは必ず以下から選択：${accountList}`;
       parsed.suggestedAccounts = ["雑費"];
     }
 
-    // 使用ログ記録（履歴用）
-    const yearMonth = new Date().toISOString().slice(0, 7);
-    const logs = Array.from({ length: count }, () => ({ user_id: user.id, year_month: yearMonth }));
-    await supabase.from("usage_logs").insert(logs);
-
-    // profiles.monthly_count を +count（adminクライアント）
-    await admin
-      .from("profiles")
-      .update({ monthly_count: used + count })
-      .eq("id", user.id);
+    // count=0 の後続呼び出しはカウント更新をスキップ
+    if (count > 0) {
+      const yearMonth = new Date().toISOString().slice(0, 7);
+      const logs = Array.from({ length: count }, () => ({ user_id: user.id, year_month: yearMonth }));
+      await supabase.from("usage_logs").insert(logs);
+      await admin
+        .from("profiles")
+        .update({ monthly_count: used + count })
+        .eq("id", user.id);
+    }
 
     return NextResponse.json(parsed);
   } catch (error) {
