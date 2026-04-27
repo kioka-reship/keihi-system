@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
-import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 import LogoutButton from "@/components/LogoutButton";
 
 export const metadata: Metadata = {
@@ -15,6 +14,14 @@ const PLAN_LIMITS: Record<string, number> = {
   light:    20,
   standard: 40,
   pro:      120,
+};
+
+const PLAN_NAMES: Record<string, string> = {
+  none:     "お試し",
+  free:     "お試し",
+  light:    "ライト",
+  standard: "スタンダード",
+  pro:      "PRO",
 };
 
 async function getNavData() {
@@ -35,15 +42,15 @@ async function getNavData() {
       .single();
 
     const plan = (profile?.plan || "none") as string;
-    // "free" は "none" と同じ扱い
-    const planKey = (plan === "free" ? "none" : plan) as PlanKey;
-    const config = PLAN_CONFIG[planKey] ?? PLAN_CONFIG.none;
+    const limit = PLAN_LIMITS[plan] ?? 3;
+    const used = profile?.monthly_count ?? 0;
+    const remaining = Math.max(0, limit - used);
 
     return {
-      used: profile?.monthly_count ?? 0,
-      limit: PLAN_LIMITS[plan] ?? 3,
+      planName: PLAN_NAMES[plan] ?? "お試し",
+      limit,
+      remaining,
       extra: profile?.extra_credits ?? 0,
-      planLabel: config.label,
     };
   } catch {
     return null;
@@ -68,9 +75,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/plans" className="text-gray-600 hover:text-blue-600">プラン</Link>
                 </div>
                 <div className="text-xs text-gray-500 bg-gray-50 rounded-full px-3 py-1 border border-gray-200">
-                  {nav.planLabel}｜
-                  <span className={nav.used >= nav.limit ? "text-red-500 font-semibold" : "text-gray-700"}>
-                    {nav.used}/{nav.limit}枚
+                  {nav.planName}（{nav.limit}枚）｜
+                  <span className={nav.remaining === 0 ? "text-red-500 font-semibold" : "text-gray-700"}>
+                    残り{nav.remaining}枚
                   </span>
                   {nav.extra > 0 && <span className="text-blue-600"> +{nav.extra}</span>}
                 </div>
