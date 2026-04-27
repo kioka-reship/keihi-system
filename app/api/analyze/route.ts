@@ -12,21 +12,18 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
-  // プロフィール取得（存在しない場合は自動作成）
+  // adminクライアントでprofileを取得（RLSバイパス・monthly_count含む）
+  const admin = createAdminClient();
   const profile = await getOrCreateProfile(supabase, user.id, user.email ?? "");
-
-  // 今月の使用枚数チェック
-  const yearMonth = new Date().toISOString().slice(0, 7);
-  const { count: usedThisMonth } = await supabase
-    .from("usage_logs")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("year_month", yearMonth);
+  const { data: profileData } = await admin
+    .from("profiles")
+    .select("monthly_count")
+    .eq("id", user.id)
+    .single();
 
   const planKey = (profile.plan || "none") as PlanKey;
   const monthlyLimit = PLAN_CONFIG[planKey]?.monthlyLimit ?? PLAN_CONFIG.none.monthlyLimit;
-  const extraCredits = profile.extra_credits ?? 0;
-  const used = usedThisMonth ?? 0;
+  const used = profileData?.monthly_count ?? 0;
 
   // Gemini APIキーチェック
   const apiKey = process.env.GEMINI_API_KEY?.trim();
@@ -36,20 +33,22 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mediaType, count: rawCount } = await req.json();
     const count = Math.max(1, Math.floor(Number(rawCount) || 1));
 
-    // 上限チェック：count枚まとめて処理できるか確認
+    // monthly_count ベースで上限チェック
     const remaining = monthlyLimit - used;
-    if (remaining < count && extraCredits <= 0) {
-      const isTrialUser = planKey === "none";
+    if (remaining < count) {
       return NextResponse.json({
-        error: isTrialUser
+        error: planKey === "none"
           ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択してご利用ください。`
           : remaining <= 0
-            ? `今月の解析上限（${monthlyLimit}枚）に達しました。追加クレジットをご購入ください。`
-            : `残り${remaining}枚しかありません（${count}枚分のリクエストは処理できません）。`,
+            ? `今月の解析上限（${monthlyLimit}枚）に達しました。プランをアップグレードしてください。`
+            : `残り${remaining}枚しかありません（${count}枚分は処理できません）。`,
         limitReached: true,
         remaining,
+        plan: planKey,
+        limit: monthlyLimit,
       }, { status: 403 });
     }
+
     if (!imageBase64) return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
 
     const cleanBase64 = (imageBase64 as string).replace(/\s/g, "");
@@ -89,25 +88,16 @@ suggestedAccountsは必ず以下から選択：${accountList}`;
       parsed.suggestedAccounts = ["雑費"];
     }
 
-    // 使用ログ記録（count枚分）
+    // 使用ログ記録（履歴用）
+    const yearMonth = new Date().toISOString().slice(0, 7);
     const logs = Array.from({ length: count }, () => ({ user_id: user.id, year_month: yearMonth }));
     await supabase.from("usage_logs").insert(logs);
 
-    // profiles.monthly_count を +count（service_roleでRLSをバイパス）
-    const admin = createAdminClient();
+    // profiles.monthly_count を +count（adminクライアント）
     await admin
       .from("profiles")
       .update({ monthly_count: used + count })
       .eq("id", user.id);
-
-    // 月間上限超過分はextra_creditsを消費
-    const overCount = Math.max(0, (used + count) - monthlyLimit);
-    if (overCount > 0 && extraCredits > 0) {
-      await admin
-        .from("profiles")
-        .update({ extra_credits: Math.max(0, extraCredits - overCount) })
-        .eq("id", user.id);
-    }
 
     return NextResponse.json(parsed);
   } catch (error) {

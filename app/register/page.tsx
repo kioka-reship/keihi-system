@@ -6,7 +6,7 @@ import { AccountItem, ReceiptAnalysis } from "@/types";
 import { addExpense } from "@/lib/storage";
 import ReceiptUploader from "@/components/ReceiptUploader";
 import AnalysisResult from "@/components/AnalysisResult";
-import Link from "next/link";
+import LimitReachedModal from "@/components/LimitReachedModal";
 
 type Step = "upload" | "analyzing" | "confirm" | "manual";
 
@@ -29,7 +29,7 @@ export default function RegisterPage() {
   const [analysis, setAnalysis] = useState<ReceiptAnalysis | null>(null);
   const [values, setValues] = useState(defaultValues());
   const [error, setError] = useState<string>("");
-  const [limitReached, setLimitReached] = useState(false);
+  const [limitModal, setLimitModal] = useState<{ plan: string; limit: number; remaining: number } | null>(null);
 
   function handleImageSelect(base64: string, mt: string) {
     setImageBase64(base64);
@@ -44,7 +44,7 @@ export default function RegisterPage() {
     }
     setStep("analyzing");
     setError("");
-    setLimitReached(false);
+    setLimitModal(null);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -55,7 +55,11 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.limitReached) setLimitReached(true);
+        if (res.status === 403 && data.limitReached) {
+          setLimitModal({ plan: data.plan ?? "none", limit: data.limit ?? 3, remaining: data.remaining ?? 0 });
+          setStep("upload");
+          return;
+        }
         throw new Error(data.error || "解析失敗");
       }
 
@@ -109,16 +113,18 @@ export default function RegisterPage() {
         <p className="text-sm text-gray-500 mt-0.5">レシートをAIで解析して自動入力</p>
       </div>
 
+      {limitModal && (
+        <LimitReachedModal
+          plan={limitModal.plan}
+          limit={limitModal.limit}
+          remaining={limitModal.remaining}
+          onClose={() => setLimitModal(null)}
+        />
+      )}
+
       {error && (
-        <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm border border-red-200 space-y-1">
-          <p>{error}</p>
-          {limitReached && (
-            <p className="text-xs">
-              プランのアップグレードは{" "}
-              <Link href="/admin" className="underline">管理画面</Link>
-              からお問い合わせください。
-            </p>
-          )}
+        <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm border border-red-200">
+          {error}
         </div>
       )}
 
