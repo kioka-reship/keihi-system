@@ -28,22 +28,28 @@ export async function POST(req: NextRequest) {
   const extraCredits = profile.extra_credits ?? 0;
   const used = usedThisMonth ?? 0;
 
-  if (used >= monthlyLimit && extraCredits <= 0) {
-    const isTrialUser = planKey === "none";
-    return NextResponse.json({
-      error: isTrialUser
-        ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択してご利用ください。`
-        : `今月の解析上限（${monthlyLimit}枚）に達しました。追加クレジットをご購入ください。`,
-      limitReached: true,
-    }, { status: 403 });
-  }
-
   // Gemini APIキーチェック
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return NextResponse.json({ error: "Gemini APIキーが設定されていません" }, { status: 500 });
 
   try {
-    const { imageBase64, mediaType } = await req.json();
+    const { imageBase64, mediaType, count: rawCount } = await req.json();
+    const count = Math.max(1, Math.floor(Number(rawCount) || 1));
+
+    // 上限チェック：count枚まとめて処理できるか確認
+    const remaining = monthlyLimit - used;
+    if (remaining < count && extraCredits <= 0) {
+      const isTrialUser = planKey === "none";
+      return NextResponse.json({
+        error: isTrialUser
+          ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択してご利用ください。`
+          : remaining <= 0
+            ? `今月の解析上限（${monthlyLimit}枚）に達しました。追加クレジットをご購入ください。`
+            : `残り${remaining}枚しかありません（${count}枚分のリクエストは処理できません）。`,
+        limitReached: true,
+        remaining,
+      }, { status: 403 });
+    }
     if (!imageBase64) return NextResponse.json({ error: "画像が必要です" }, { status: 400 });
 
     const cleanBase64 = (imageBase64 as string).replace(/\s/g, "");
@@ -83,21 +89,23 @@ suggestedAccountsは必ず以下から選択：${accountList}`;
       parsed.suggestedAccounts = ["雑費"];
     }
 
-    // 使用ログ記録
-    await supabase.from("usage_logs").insert({ user_id: user.id, year_month: yearMonth });
+    // 使用ログ記録（count枚分）
+    const logs = Array.from({ length: count }, () => ({ user_id: user.id, year_month: yearMonth }));
+    await supabase.from("usage_logs").insert(logs);
 
-    // profiles.monthly_count を +1（service_roleでRLSをバイパス）
+    // profiles.monthly_count を +count（service_roleでRLSをバイパス）
     const admin = createAdminClient();
     await admin
       .from("profiles")
-      .update({ monthly_count: used + 1 })
+      .update({ monthly_count: used + count })
       .eq("id", user.id);
 
-    // 月間上限超過時はextra_creditsを消費
-    if (used >= monthlyLimit && extraCredits > 0) {
+    // 月間上限超過分はextra_creditsを消費
+    const overCount = Math.max(0, (used + count) - monthlyLimit);
+    if (overCount > 0 && extraCredits > 0) {
       await admin
         .from("profiles")
-        .update({ extra_credits: extraCredits - 1 })
+        .update({ extra_credits: Math.max(0, extraCredits - overCount) })
         .eq("id", user.id);
     }
 
