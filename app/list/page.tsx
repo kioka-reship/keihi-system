@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Image from "next/image";
 import { Expense, ACCOUNT_ITEMS } from "@/types";
 import { loadExpenses, updateExpense, deleteExpense } from "@/lib/storage";
 import { downloadCSV } from "@/lib/csv";
 import EditModal from "@/components/EditModal";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 type SortKey = "date" | "amount" | "storeName";
 type SortDir = "asc" | "desc";
@@ -24,7 +26,8 @@ export default function ListPage() {
   const [sub, setSub]               = useState(EMPTY_SUB);
   const [sortKey, setSortKey]       = useState<SortKey>("date");
   const [sortDir, setSortDir]       = useState<SortDir>("desc");
-  const [editTarget, setEditTarget] = useState<Expense | null>(null);
+  const [editTarget, setEditTarget]     = useState<Expense | null>(null);
+  const [previewUrl, setPreviewUrl]     = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
   const [open, setOpen]             = useState(false);
 
@@ -268,20 +271,47 @@ export default function ListPage() {
         <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
           {sorted.map(e => (
             <div key={e.id} className="px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm text-gray-800">{e.storeName}</span>
-                    <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{e.accountItem}</span>
+              <div className="flex items-start gap-3">
+                {/* サムネイル */}
+                {e.imageUrl ? (
+                  <button
+                    onClick={() => setPreviewUrl(e.imageUrl!)}
+                    className="shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all"
+                    title="クリックで拡大"
+                  >
+                    <Image
+                      src={e.imageUrl}
+                      alt="レシート"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  </button>
+                ) : (
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-300 text-xl">
+                    🧾
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {e.date}{e.description && ` · ${e.description}`}{e.memo && ` · ${e.memo}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-semibold text-sm text-gray-900">¥{e.amount.toLocaleString()}</span>
-                  <button onClick={() => setEditTarget(e)} className="text-xs text-gray-400 hover:text-blue-600 px-1.5 py-0.5 rounded">編集</button>
-                  <button onClick={() => handleDelete(e.id)} className="text-xs text-gray-400 hover:text-red-600 px-1.5 py-0.5 rounded">削除</button>
+                )}
+
+                {/* 内容 */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm text-gray-800">{e.storeName}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{e.accountItem}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {e.date}{e.description && ` · ${e.description}`}{e.memo && ` · ${e.memo}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-semibold text-sm text-gray-900">¥{e.amount.toLocaleString()}</span>
+                      <button onClick={() => setEditTarget(e)} className="text-xs text-gray-400 hover:text-blue-600 px-1.5 py-0.5 rounded">編集</button>
+                      <button onClick={() => handleDelete(e.id)} className="text-xs text-gray-400 hover:text-red-600 px-1.5 py-0.5 rounded">削除</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -291,6 +321,10 @@ export default function ListPage() {
 
       {editTarget && (
         <EditModal expense={editTarget} onSave={handleSave} onClose={() => setEditTarget(null)} />
+      )}
+
+      {previewUrl && (
+        <ImagePreviewModal src={previewUrl} onClose={() => setPreviewUrl(null)} />
       )}
     </div>
   );
