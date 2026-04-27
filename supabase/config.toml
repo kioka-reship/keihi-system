@@ -1,0 +1,3 @@
+[functions.reset-monthly-count]
+verify_jwt = false
+schedule = "0 0 1 * *"
