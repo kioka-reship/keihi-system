@@ -170,10 +170,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
               <p>© 2026 keihi. All rights reserved.</p>
               <div className="flex items-center gap-4">
-                <Link href="/faq"     className="hover:text-gray-600 transition-colors">よくある質問</Link>
-                <Link href="/contact" className="hover:text-gray-600 transition-colors">お問い合わせ</Link>
-                <Link href="/privacy" className="hover:text-gray-600 transition-colors">プライバシーポリシー</Link>
-                <Link href="/terms"   className="hover:text-gray-600 transition-colors">利用規約</Link>
+                <Link href="/faq"        className="hover:text-gray-600 transition-colors">よくある質問</Link>
+                <Link href="/contact"   className="hover:text-gray-600 transition-colors">お問い合わせ</Link>
+                <Link href="/privacy"   className="hover:text-gray-600 transition-colors">プライバシーポリシー</Link>
+                <Link href="/terms"     className="hover:text-gray-600 transition-colors">利用規約</Link>
+                <Link href="/tokushoho" className="hover:text-gray-600 transition-colors">特定商取引法</Link>
               </div>
             </div>
           </footer>

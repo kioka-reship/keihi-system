@@ -54,8 +54,10 @@ export async function POST(req: NextRequest) {
           console.log(`Plan updated to ${plan} for customer ${customerId}`)
 
         } else if (session.mode === 'payment') {
-          const userId = session.metadata?.userId
-          const credits = parseInt(session.metadata?.credits ?? '0', 10)
+          const userId   = session.metadata?.userId
+          const credits  = parseInt(session.metadata?.credits ?? '0', 10)
+          const priceId  = session.metadata?.priceId ?? null
+          const amountYen = session.amount_total ?? 0
 
           if (userId && credits > 0) {
             const { data: profile } = await supabase
@@ -65,12 +67,23 @@ export async function POST(req: NextRequest) {
               .single()
 
             const currentCredits = profile?.extra_credits ?? 0
+
+            // extra_credits 加算
             await supabase
               .from('profiles')
               .update({ extra_credits: currentCredits + credits })
               .eq('id', userId)
 
-            console.log(`Added ${credits} extra_credits to user ${userId}`)
+            // 購入履歴を記録
+            await supabase.from('credit_purchases').insert({
+              user_id:           userId,
+              credits:           credits,
+              amount_yen:        amountYen,
+              price_id:          priceId,
+              stripe_session_id: session.id,
+            })
+
+            console.log(`Added ${credits} extra_credits (¥${amountYen}) to user ${userId}`)
           }
         }
         break
