@@ -4,8 +4,10 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 認証不要パス
-  if (pathname.startsWith("/auth/")) {
-    return NextResponse.next();
+  if (pathname.startsWith("/auth/") || pathname === "/lp") {
+    const res = NextResponse.next();
+    res.headers.set("x-pathname", pathname);
+    return res;
   }
 
   // Supabaseのセッションcookieが存在するかチェック
@@ -14,10 +16,14 @@ export function middleware(request: NextRequest) {
     .some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
 
   if (!hasSession) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    // トップページは未ログイン時にLPへ誘導
+    const dest = pathname === "/" ? "/lp" : "/auth/login";
+    return NextResponse.redirect(new URL(dest, request.url));
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set("x-pathname", pathname);
+  return res;
 }
 
 // Webhookのパスを認証チェックから除外する

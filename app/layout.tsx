@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
@@ -107,11 +108,14 @@ async function getNavData() {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nav = await getNavData();
+  const reqHeaders = await headers();
+  const pathname = reqHeaders.get("x-pathname") ?? "";
+  const isLP = pathname === "/lp";
 
   return (
     <html lang="ja">
       <body className="bg-gray-50 min-h-screen antialiased">
-        {nav && (
+        {!isLP && nav && (
           <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
             <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
               <Link href="/" className="font-bold text-blue-700 text-lg">📒 経費帳簿</Link>
@@ -154,20 +158,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
         )}
-        <main className="max-w-2xl mx-auto px-4 py-6 pb-20 sm:pb-6">{children}</main>
+        {isLP ? (
+          children
+        ) : (
+          <main className="max-w-2xl mx-auto px-4 py-6 pb-20 sm:pb-6">{children}</main>
+        )}
 
-        {/* フッター */}
-        <footer className="border-t border-gray-200 bg-white mt-8 pb-20 sm:pb-0">
-          <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
-            <p>© 2026 keihi. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/faq"     className="hover:text-gray-600 transition-colors">よくある質問</Link>
-              <Link href="/contact" className="hover:text-gray-600 transition-colors">お問い合わせ</Link>
-              <Link href="/privacy" className="hover:text-gray-600 transition-colors">プライバシーポリシー</Link>
-              <Link href="/terms"   className="hover:text-gray-600 transition-colors">利用規約</Link>
+        {/* フッター（LP以外） */}
+        {!isLP && (
+          <footer className="border-t border-gray-200 bg-white mt-8 pb-20 sm:pb-0">
+            <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
+              <p>© 2026 keihi. All rights reserved.</p>
+              <div className="flex items-center gap-4">
+                <Link href="/faq"     className="hover:text-gray-600 transition-colors">よくある質問</Link>
+                <Link href="/contact" className="hover:text-gray-600 transition-colors">お問い合わせ</Link>
+                <Link href="/privacy" className="hover:text-gray-600 transition-colors">プライバシーポリシー</Link>
+                <Link href="/terms"   className="hover:text-gray-600 transition-colors">利用規約</Link>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        )}
 
         {process.env.NEXT_PUBLIC_GA_ID && (
           <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
