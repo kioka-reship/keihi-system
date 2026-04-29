@@ -28,7 +28,7 @@ export default async function MyPage() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("plan, monthly_count, stripe_customer_id")
+    .select("plan, monthly_count, stripe_customer_id, extra_credits")
     .eq("id", user.id)
     .single();
 
@@ -37,6 +37,7 @@ export default async function MyPage() {
   const planConfig = PLAN_CONFIG[planKey] ?? PLAN_CONFIG.none;
   const limit = PLAN_LIMITS[plan] ?? 3;
   const used = profile?.monthly_count ?? 0;
+  const extraCredits = profile?.extra_credits ?? 0;
   const remaining = Math.max(0, limit - used);
   const usagePercent = Math.min(100, Math.round((used / limit) * 100));
   const isPaid = plan !== "none" && plan !== "free";
@@ -102,12 +103,33 @@ export default async function MyPage() {
           </div>
         </div>
 
+        {/* 追加クレジット表示 */}
+        {extraCredits > 0 ? (
+          <div className="flex justify-between items-center text-sm bg-blue-50 rounded-xl px-3 py-2">
+            <span className="text-blue-700">追加枚数（当月限り）</span>
+            <span className="font-semibold text-blue-700">+{extraCredits}枚</span>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-400 text-xs">追加枚数</span>
+            <span className="text-gray-400 text-xs">なし</span>
+          </div>
+        )}
+
+        {/* 追加購入ボタン */}
+        <Link
+          href="/credits"
+          className="block w-full text-center text-sm font-medium text-blue-600 border border-blue-200 rounded-xl py-2.5 hover:bg-blue-50 transition-colors"
+        >
+          追加枚数を購入する
+        </Link>
+
         {remaining === 0 && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xs text-red-700">
-            今月の上限に達しました。
-            <Link href="/plans" className="underline font-medium ml-1">
-              プランをアップグレード
-            </Link>
+            今月の月間枠に達しました。
+            <Link href="/plans" className="underline font-medium ml-1">プランをアップグレード</Link>
+            、または
+            <Link href="/credits" className="underline font-medium ml-1">追加枚数を購入</Link>
             して続けてご利用ください。
           </div>
         )}

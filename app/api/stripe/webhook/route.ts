@@ -32,24 +32,47 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        const customerId = session.customer as string
-        const subscriptionId = session.subscription as string
 
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-        const priceId = subscription.items.data[0].price.id
-        const plan = getPlanFromPriceId(priceId)
+        if (session.mode === 'subscription') {
+          const customerId = session.customer as string
+          const subscriptionId = session.subscription as string
 
-        await supabase
-          .from('profiles')
-          .update({
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
-            plan: plan,
-            monthly_count: 0,
-          })
-          .eq('stripe_customer_id', customerId)
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const priceId = subscription.items.data[0].price.id
+          const plan = getPlanFromPriceId(priceId)
 
-        console.log(`Plan updated to ${plan} for customer ${customerId}`)
+          await supabase
+            .from('profiles')
+            .update({
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              plan: plan,
+              monthly_count: 0,
+            })
+            .eq('stripe_customer_id', customerId)
+
+          console.log(`Plan updated to ${plan} for customer ${customerId}`)
+
+        } else if (session.mode === 'payment') {
+          const userId = session.metadata?.userId
+          const credits = parseInt(session.metadata?.credits ?? '0', 10)
+
+          if (userId && credits > 0) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('extra_credits')
+              .eq('id', userId)
+              .single()
+
+            const currentCredits = profile?.extra_credits ?? 0
+            await supabase
+              .from('profiles')
+              .update({ extra_credits: currentCredits + credits })
+              .eq('id', userId)
+
+            console.log(`Added ${credits} extra_credits to user ${userId}`)
+          }
+        }
         break
       }
 

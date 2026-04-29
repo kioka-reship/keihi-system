@@ -8,19 +8,19 @@ Deno.serve(async (_req) => {
 
   const { error, count } = await supabase
     .from("profiles")
-    .update({ monthly_count: 0 })
-    .gt("monthly_count", 0)
+    .update({ monthly_count: 0, extra_credits: 0 })
+    .or("monthly_count.gt.0,extra_credits.gt.0")
     .select("*", { count: "exact", head: true });
 
   if (error) {
-    console.error("monthly_count reset failed:", error.message);
+    console.error("monthly reset failed:", error.message);
     return new Response(
       JSON.stringify({ ok: false, error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  console.log(`monthly_count reset: ${count ?? 0} rows updated`);
+  console.log(`monthly reset: ${count ?? 0} rows updated (monthly_count + extra_credits → 0)`);
   return new Response(
     JSON.stringify({ ok: true, updated: count ?? 0 }),
     { status: 200, headers: { "Content-Type": "application/json" } }

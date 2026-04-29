@@ -7,6 +7,7 @@ import { loadExpenses, updateExpense, deleteExpense } from "@/lib/storage";
 import { downloadCSV } from "@/lib/csv";
 import EditModal from "@/components/EditModal";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
+import SkeletonCard from "@/components/SkeletonCard";
 
 type SortKey = "date" | "amount" | "storeName";
 type SortDir = "asc" | "desc";
@@ -99,7 +100,16 @@ export default function ListPage() {
   const total = useMemo(() => sorted.reduce((s, e) => s + e.amount, 0), [sorted]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><p className="text-gray-400 text-sm">読み込み中…</p></div>;
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">経費一覧</h1>
+        </div>
+        <SkeletonCard lines={5} />
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
+      </div>
+    );
   }
 
   return (

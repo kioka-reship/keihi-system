@@ -9,7 +9,11 @@
       "Bash(node -e \"const a = require\\('@anthropic-ai/sdk'\\); console.log\\(a.VERSION || 'version not exported'\\)\")",
       "Bash(node -e \"console.log\\(require\\('./node_modules/@anthropic-ai/sdk/package.json'\\).version\\)\")",
       "Bash(xargs grep *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(vercel *)",
+      "Bash(npx vercel *)",
+      "Bash(curl *)",
+      "Bash(npx next *)"
     ]
   }
 }

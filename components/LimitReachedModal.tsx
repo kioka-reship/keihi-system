@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Props {
   plan: string;
@@ -66,6 +67,13 @@ export default function LimitReachedModal({ plan, limit, remaining, onClose }: P
           >
             プランをアップグレード
           </button>
+          <Link
+            href="/credits"
+            onClick={onClose}
+            className="block w-full border border-blue-300 text-blue-600 hover:bg-blue-50 font-semibold text-sm rounded-xl py-3 transition-colors text-center"
+          >
+            追加枚数を購入（当月限り）
+          </Link>
           <button
             onClick={onClose}
             className="w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition-colors"

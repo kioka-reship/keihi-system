@@ -2,10 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 export const metadata: Metadata = {
-  title: "経費帳簿 | 白色申告",
-  description: "白色申告用経費管理システム",
+  title: "keihi | レシート読み取りで経費管理を自動化",
+  description: "AIがレシートを自動解析。白色申告に対応した経費帳簿SaaS。スマホで撮るだけで経費入力が完了します。",
+  openGraph: {
+    title: "keihi | レシート読み取りで経費管理を自動化",
+    description: "AIがレシートを自動解析。白色申告に対応した経費帳簿SaaS。",
+    url: "https://keihi-system-gamma.vercel.app",
+    siteName: "keihi",
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "keihi | レシート読み取りで経費管理を自動化",
+    description: "AIがレシートを自動解析。白色申告に対応した経費帳簿SaaS。",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 const PLAN_LIMITS: Record<string, number> = {
@@ -46,7 +64,7 @@ async function getNavData() {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("plan, monthly_count")
+      .select("plan, monthly_count, extra_credits")
       .eq("id", user.id)
       .single();
 
@@ -60,7 +78,7 @@ async function getNavData() {
       planName: PLAN_NAMES[plan] ?? "お試し",
       limit,
       remaining,
-      extra: 0,
+      extra: profile?.extra_credits ?? 0,
     };
   } catch {
     return null;
@@ -82,27 +100,30 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/" className="text-gray-600 hover:text-blue-600">ホーム</Link>
                   <Link href="/register" className="text-gray-600 hover:text-blue-600">登録</Link>
                   <Link href="/list" className="text-gray-600 hover:text-blue-600">一覧</Link>
+                  <Link href="/report" className="text-gray-600 hover:text-blue-600">レポート</Link>
                   <Link href="/plans" className="text-gray-600 hover:text-blue-600">プラン</Link>
+                  <Link href="/credits" className="text-gray-600 hover:text-blue-600">追加購入</Link>
                   <Link href="/mypage" className="text-gray-600 hover:text-blue-600">マイページ</Link>
                 </div>
-                <div className="text-xs text-gray-500 bg-gray-50 rounded-full px-3 py-1 border border-gray-200">
+                <Link href="/credits" className="text-xs text-gray-500 bg-gray-50 rounded-full px-3 py-1 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
                   {nav.planName}（{nav.limit}枚）｜
                   <span className={nav.remaining === 0 ? "text-red-500 font-semibold" : "text-gray-700"}>
                     残り{nav.remaining}枚
                   </span>
                   {nav.extra > 0 && <span className="text-blue-600"> +{nav.extra}</span>}
-                </div>
+                </Link>
                 <LogoutButton />
               </div>
             </div>
             {/* スマホ用ボトムナビ */}
             <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40">
               {[
-                { href: "/",       label: "ホーム", icon: "🏠" },
+                { href: "/",        label: "ホーム",   icon: "🏠" },
                 { href: "/register", label: "登録",   icon: "➕" },
-                { href: "/list",   label: "一覧",   icon: "📋" },
-                { href: "/plans",  label: "プラン", icon: "💳" },
-                { href: "/mypage", label: "マイページ", icon: "👤" },
+                { href: "/list",    label: "一覧",    icon: "📋" },
+                { href: "/report",  label: "レポート", icon: "📊" },
+                { href: "/plans",   label: "プラン",  icon: "💳" },
+                { href: "/mypage",  label: "マイページ", icon: "👤" },
               ].map((item) => (
                 <Link key={item.href} href={item.href}
                   className="flex-1 flex flex-col items-center py-2 text-gray-500 hover:text-blue-600 text-xs gap-0.5">
@@ -114,6 +135,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </header>
         )}
         <main className="max-w-2xl mx-auto px-4 py-6 pb-20 sm:pb-6">{children}</main>
+
+        {/* フッター */}
+        <footer className="border-t border-gray-200 bg-white mt-8 pb-20 sm:pb-0">
+          <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
+            <p>© 2026 keihi. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <Link href="/faq"     className="hover:text-gray-600 transition-colors">よくある質問</Link>
+              <Link href="/contact" className="hover:text-gray-600 transition-colors">お問い合わせ</Link>
+              <Link href="/privacy" className="hover:text-gray-600 transition-colors">プライバシーポリシー</Link>
+              <Link href="/terms"   className="hover:text-gray-600 transition-colors">利用規約</Link>
+            </div>
+          </div>
+        </footer>
+
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        )}
       </body>
     </html>
   );
