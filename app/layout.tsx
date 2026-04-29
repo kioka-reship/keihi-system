@@ -62,23 +62,43 @@ async function getNavData() {
     // adminクライアントでprofilesを取得（RLSをバイパス）
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const admin = createAdminClient();
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
       .from("profiles")
       .select("plan, monthly_count, extra_credits")
       .eq("id", user.id)
       .single();
 
+    if (profileError) {
+      console.error("[getNavData] profiles query error:", profileError.code, profileError.message);
+    }
 
-    const plan = (profile?.plan || "none") as string;
+    // extra_credits カラム未追加などでクエリ失敗した場合のフォールバック
+    type NavProfile = { plan: string | null; monthly_count: number | null; extra_credits?: number };
+    let resolved: NavProfile | null = profile as NavProfile | null;
+    if (!profile) {
+      const { data: fallback, error: fallbackError } = await admin
+        .from("profiles")
+        .select("plan, monthly_count")
+        .eq("id", user.id)
+        .single();
+      if (fallbackError) {
+        console.error("[getNavData] fallback query error:", fallbackError.message);
+      }
+      resolved = fallback as NavProfile | null;
+    }
+
+    if (!resolved) return null;
+
+    const plan = (resolved.plan || "none") as string;
     const limit = PLAN_LIMITS[plan] ?? 3;
-    const used = profile?.monthly_count ?? 0;
+    const used = resolved.monthly_count ?? 0;
     const remaining = Math.max(0, limit - used);
 
     return {
       planName: PLAN_NAMES[plan] ?? "お試し",
       limit,
       remaining,
-      extra: profile?.extra_credits ?? 0,
+      extra: resolved.extra_credits ?? 0,
     };
   } catch {
     return null;
