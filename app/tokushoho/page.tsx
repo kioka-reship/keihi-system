@@ -3,10 +3,10 @@ export const metadata = {
 };
 
 const ITEMS = [
-  { label: "販売業者",       value: "【要記入：屋号または氏名】" },
-  { label: "運営責任者",     value: "【要記入：代表者氏名】" },
-  { label: "所在地",         value: "【要記入：住所】" },
-  { label: "電話番号",       value: "【要記入：電話番号】（お問い合わせはメールにて受付しております）" },
+  { label: "販売業者",       value: "合同会社Relationship" },
+  { label: "運営責任者",     value: "木岡 克太" },
+  { label: "所在地",         value: "福岡市博多区博多駅前1－15－20ー2F" },
+  { label: "電話番号",       value: "050-3554-4028（お問い合わせはメールにて受付しております）" },
   { label: "メールアドレス", value: "【要記入：メールアドレス】" },
   { label: "サービス名",     value: "keihi（経費帳簿）" },
   {
