@@ -2,12 +2,17 @@ export const metadata = {
   title: "特定商取引法に基づく表記 | keihi",
 };
 
+// ─────────────────────────────────────────────────────────────
+// ▼ 公開時に専用メールアドレスへ差し替えてください（ここだけ変更すればOK）
+const CONTACT_EMAIL = "準備中（近日公開予定）";
+// ─────────────────────────────────────────────────────────────
+
 const ITEMS = [
   { label: "販売業者",       value: "合同会社Relationship" },
   { label: "運営責任者",     value: "木岡 克太" },
   { label: "所在地",         value: "福岡市博多区博多駅前1－15－20ー2F" },
   { label: "電話番号",       value: "050-3554-4028（お問い合わせはメールにて受付しております）" },
-  { label: "メールアドレス", value: "support@後で取得予定ドメイン" },
+  { label: "メールアドレス", value: CONTACT_EMAIL },
   { label: "サービス名",     value: "keihi（経費帳簿）" },
   {
     label: "販売価格",
@@ -33,7 +38,7 @@ export default function TokushohoPage() {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
-        ※ 【要記入】の箇所は公開前に実際の情報に更新してください。
+        ※ メールアドレスは準備中です。専用アドレス取得後、<code className="font-mono bg-amber-100 px-1 rounded">app/tokushoho/page.tsx</code> 冒頭の <code className="font-mono bg-amber-100 px-1 rounded">CONTACT_EMAIL</code> を差し替えてください。
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
