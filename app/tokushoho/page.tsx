@@ -7,7 +7,7 @@ const ITEMS = [
   { label: "運営責任者",     value: "木岡 克太" },
   { label: "所在地",         value: "福岡市博多区博多駅前1－15－20ー2F" },
   { label: "電話番号",       value: "050-3554-4028（お問い合わせはメールにて受付しております）" },
-  { label: "メールアドレス", value: "【要記入：メールアドレス】" },
+  { label: "メールアドレス", value: "support@後で取得予定ドメイン" },
   { label: "サービス名",     value: "keihi（経費帳簿）" },
   {
     label: "販売価格",
