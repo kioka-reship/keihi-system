@@ -52,7 +52,7 @@ export default function RegisterPage() {
       console.error("profile save failed:", await res.text());
     }
 
-    router.push("/");
+    router.push("/plans");
     router.refresh();
   }
 

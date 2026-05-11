@@ -1,8 +1,9 @@
 export const PLAN_CONFIG = {
-  none:     { label: "お試し（3枚）",  monthlyLimit: 3,   price: 0,    stripePriceId: null },
-  light:    { label: "ライト",         monthlyLimit: 20,  price: 980,  stripePriceId: "price_1TPvnLAYo0SBr2K876ryFMIc" },
-  standard: { label: "スタンダード",   monthlyLimit: 40,  price: 1680, stripePriceId: "price_1TPvnbAYo0SBr2K85YkEVnDm" },
-  pro:      { label: "PRO",           monthlyLimit: 120, price: 2980, stripePriceId: "price_1TPvnqAYo0SBr2K810KSO4Mu" },
+  none:     { label: "未選択",          monthlyLimit: 3,   price: 0,    stripePriceId: null },
+  free:     { label: "お試し（3枚）",   monthlyLimit: 3,   price: 0,    stripePriceId: null },
+  light:    { label: "ライト",          monthlyLimit: 20,  price: 980,  stripePriceId: "price_1TPvnLAYo0SBr2K876ryFMIc" },
+  standard: { label: "スタンダード",    monthlyLimit: 40,  price: 1680, stripePriceId: "price_1TPvnbAYo0SBr2K85YkEVnDm" },
+  pro:      { label: "PRO",            monthlyLimit: 120, price: 2980, stripePriceId: "price_1TPvnqAYo0SBr2K810KSO4Mu" },
 } as const;
 
 export type PlanKey = keyof typeof PLAN_CONFIG;

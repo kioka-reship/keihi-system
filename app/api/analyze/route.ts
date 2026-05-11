@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // 月間枠＋追加クレジット合計で上限チェック（count>0 のときのみ）
     if (count > 0 && totalRemaining < count) {
       return NextResponse.json({
-        error: planKey === "none"
+        error: (planKey === "none" || planKey === "free")
           ? `お試し上限（${monthlyLimit}枚）に達しました。プランを選択するか追加枚数をご購入ください。`
           : totalRemaining <= 0
             ? `今月の解析上限（${monthlyLimit}枚）に達しました。プランをアップグレードするか追加枚数をご購入ください。`

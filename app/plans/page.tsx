@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 import PlanButton from "./PlanButton";
 import CancelButton from "./CancelButton";
+import FreeTrialButton from "./FreeTrialButton";
 
 const PLAN_FEATURES: Record<string, string[]> = {
   light:    ["月20枚まで解析", "全勘定科目対応", "CSV出力", "データ永続保存"],
@@ -69,8 +70,11 @@ export default async function PlansPage() {
         )}
 
         {currentPlan === "none" && (
-          <div className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-xl p-3">
-            お試しプランは月3枚まで解析できます。下記からプランを選択してください。
+          <div className="mt-3 space-y-3">
+            <div className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3">
+              お試しプランは月3枚まで解析できます。下記からプランを選択するか、まずはお試しで始めることができます。
+            </div>
+            <FreeTrialButton userId={user.id} />
           </div>
         )}
       </div>
