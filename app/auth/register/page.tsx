@@ -53,7 +53,6 @@ export default function RegisterPage() {
     }
 
     router.push("/plans");
-    router.refresh();
   }
 
   return (

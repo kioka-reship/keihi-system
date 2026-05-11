@@ -24,6 +24,13 @@ test("TC1: 新規登録後に /plans にリダイレクトされる", async ({ p
 
   await page.getByRole("button", { name: "アカウントを作成" }).click();
 
+  // エラーメッセージが出ていた場合は内容を出力（デバッグ用）
+  await page.waitForTimeout(3000);
+  const errorBox = page.locator('[class*="bg-red-50"]');
+  if (await errorBox.isVisible()) {
+    console.log("[TC1 ERROR]", await errorBox.textContent());
+  }
+
   // /plans へのリダイレクトを確認（最大20秒）
   await expect(page).toHaveURL(`${BASE_URL}/plans`, { timeout: 20000 });
 });
