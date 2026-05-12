@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function FreeTrialButton({ userId: _userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleFreeTrial() {
     setLoading(true);
@@ -18,7 +16,9 @@ export default function FreeTrialButton({ userId: _userId }: { userId: string })
       return;
     }
 
-    router.push("/");
+    // ソフトナビ(router.push)ではミドルウェアのplanキャッシュが残るため
+    // フルページロードで確実に最新のplan値をミドルウェアに読み込ませる
+    window.location.href = "/";
   }
 
   return (
