@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function UpdatePasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [sessionReady, setSessionReady] = useState(false);
@@ -16,40 +15,15 @@ function UpdatePasswordForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // マウント時に ?code= またはハッシュフラグメントからセッションを確立する
+  // /auth/callback でサーバーサイドのセッション確立済み → cookieから確認するだけ
   useEffect(() => {
-    const code = searchParams.get("code");
-
-    if (code) {
-      // PKCEフロー: ?code= パラメータ
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) {
-          setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
-        } else {
-          setSessionReady(true);
-        }
-      });
-      return;
-    }
-
-    // Implicitフロー: #access_token=xxx&refresh_token=yyy&type=recovery
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const accessToken  = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token") ?? "";
-    const type         = hashParams.get("type");
-
-    if (accessToken && type === "recovery") {
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
-        if (error) {
-          setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
-        } else {
-          setSessionReady(true);
-        }
-      });
-      return;
-    }
-
-    setExchangeError("リセットリンクが無効です。パスワードリセットをやり直してください。");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true);
+      } else {
+        setExchangeError("リセットリンクが無効か期限切れです。パスワードリセットをやり直してください。");
+      }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,11 +139,6 @@ function UpdatePasswordForm() {
   );
 }
 
-// useSearchParams は Suspense でラップが必要
 export default function UpdatePasswordPage() {
-  return (
-    <Suspense>
-      <UpdatePasswordForm />
-    </Suspense>
-  );
+  return <UpdatePasswordForm />;
 }
