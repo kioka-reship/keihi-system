@@ -1,16 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const [sessionReady, setSessionReady] = useState(false);
+  const [exchangeError, setExchangeError] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // マウント時に code をセッションに交換する
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (!code) {
+      setExchangeError("リセットリンクが無効です。パスワードリセットをやり直してください。");
+      return;
+    }
+
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) {
+        setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
+      } else {
+        setSessionReady(true);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +52,7 @@ export default function UpdatePasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      setError("パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります");
+      setError("パスワードの更新に失敗しました。もう一度お試しください");
       setLoading(false);
       return;
     }
@@ -51,49 +73,84 @@ export default function UpdatePasswordPage() {
           <h2 className="text-lg font-semibold text-gray-800 mb-1">新しいパスワードを設定</h2>
           <p className="text-xs text-gray-500 mb-5">8文字以上で入力してください</p>
 
-          {error && (
-            <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm mb-4 border border-red-200">
-              {error}
+          {/* セッション交換エラー */}
+          {exchangeError && (
+            <div className="space-y-4">
+              <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm border border-red-200">
+                {exchangeError}
+              </div>
+              <a
+                href="/auth/reset-password"
+                className="block text-center text-sm text-blue-600 hover:underline"
+              >
+                パスワードリセットをやり直す
+              </a>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                新しいパスワード（8文字以上）
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
+          {/* セッション交換中ローディング */}
+          {!exchangeError && !sessionReady && (
+            <div className="py-6 text-center text-sm text-gray-400">
+              確認中…
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                パスワード（確認）
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "更新中…" : "パスワードを更新"}
-            </button>
-          </form>
+          )}
+
+          {/* パスワード更新フォーム */}
+          {sessionReady && (
+            <>
+              {error && (
+                <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm mb-4 border border-red-200">
+                  {error}
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    新しいパスワード（8文字以上）
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    パスワード（確認）
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? "更新中…" : "パスワードを更新"}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams は Suspense でラップが必要
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense>
+      <UpdatePasswordForm />
+    </Suspense>
   );
 }
