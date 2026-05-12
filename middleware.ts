@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 認証不要パス（未ログインでもアクセス可）
-  const publicPaths = ["/auth/", "/lp", "/terms", "/privacy", "/tokushoho"];
+  const publicPaths = ["/auth/", "/lp", "/terms", "/privacy", "/tokushoho", "/admin/login"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     const res = NextResponse.next();
     res.headers.set("x-pathname", pathname);
@@ -33,6 +33,10 @@ export async function middleware(request: NextRequest) {
     .some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
 
   if (!hasSession) {
+    // /admin/* は管理者ログインページへ誘導
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
     // トップページは未ログイン時にLPへ誘導
     const dest = pathname === "/" ? "/lp" : "/auth/login";
     return NextResponse.redirect(new URL(dest, request.url));

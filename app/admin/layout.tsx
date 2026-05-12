@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,9 +12,17 @@ const NAV_ITEMS = [
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const reqHeaders = await headers();
+  const pathname = reqHeaders.get("x-pathname") ?? "";
+
+  // /admin/login はサイドバー・認証チェック不要
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/admin/login");
 
   const admin = createAdminClient();
   const { data: profile } = await admin
@@ -22,7 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq("id", user.id)
     .single();
 
-  if (!profile?.is_admin) redirect("/");
+  if (!profile?.is_admin) redirect("/admin/login");
 
   return (
     <div className="flex min-h-screen bg-gray-50">
