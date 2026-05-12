@@ -15,13 +15,22 @@ function UpdatePasswordForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // /auth/callback でサーバーサイドのセッション確立済み → cookieから確認するだけ
+  // implicit flow: hash fragment (#access_token=xxx&refresh_token=yyy&type=recovery) からセッション確立
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionReady(true);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken  = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token") ?? "";
+
+    if (!accessToken) {
+      setExchangeError("リセットリンクが無効です。パスワードリセットをやり直してください。");
+      return;
+    }
+
+    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+      if (error) {
+        setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
       } else {
-        setExchangeError("リセットリンクが無効か期限切れです。パスワードリセットをやり直してください。");
+        setSessionReady(true);
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
