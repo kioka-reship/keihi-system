@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config } from "dotenv";
+
+// .env.local から SUPABASE_SERVICE_ROLE_KEY 等を読み込む
+config({ path: ".env.local" });
 
 export default defineConfig({
   testDir: "./tests",

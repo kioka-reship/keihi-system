@@ -23,7 +23,6 @@ export default function FreeTrialButton({ userId }: { userId: string }) {
     }
 
     router.push("/");
-    router.refresh();
   }
 
   return (
