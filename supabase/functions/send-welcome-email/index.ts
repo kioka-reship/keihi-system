@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_ADDRESS = Deno.env.get("FROM_EMAIL") ?? "経費帳簿 <noreply@keihi.app>";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://keihi-system-gamma.vercel.app";
@@ -73,8 +71,10 @@ Deno.serve(async (req) => {
         <p style="margin:0;line-height:1.6;">お試しプランでは月3枚まで解析できます。より多く使いたい場合はプランページからアップグレードをご検討ください。</p>
       </div>
 
-      <a href="${APP_URL}" style="display:block;text-align:center;background:#2563eb;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:14px 24px;border-radius:12px;">
-        ダッシュボードを開く
+      <p style="margin:0 0 16px;font-size:13px;color:#374151;">まずプランを選んでサービスを開始してください。</p>
+
+      <a href="${APP_URL}/lp#pricing" style="display:block;text-align:center;background:#2563eb;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:14px 24px;border-radius:12px;">
+        プランを見る
       </a>
     </div>
 
