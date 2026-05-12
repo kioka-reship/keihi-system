@@ -16,21 +16,40 @@ function UpdatePasswordForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // マウント時に code をセッションに交換する
+  // マウント時に ?code= またはハッシュフラグメントからセッションを確立する
   useEffect(() => {
     const code = searchParams.get("code");
-    if (!code) {
-      setExchangeError("リセットリンクが無効です。パスワードリセットをやり直してください。");
+
+    if (code) {
+      // PKCEフロー: ?code= パラメータ
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) {
+          setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
+        } else {
+          setSessionReady(true);
+        }
+      });
       return;
     }
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
-      } else {
-        setSessionReady(true);
-      }
-    });
+    // Implicitフロー: #access_token=xxx&refresh_token=yyy&type=recovery
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken  = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token") ?? "";
+    const type         = hashParams.get("type");
+
+    if (accessToken && type === "recovery") {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+        if (error) {
+          setExchangeError("リンクの有効期限が切れています。パスワードリセットをやり直してください。");
+        } else {
+          setSessionReady(true);
+        }
+      });
+      return;
+    }
+
+    setExchangeError("リセットリンクが無効です。パスワードリセットをやり直してください。");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
