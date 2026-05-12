@@ -13,6 +13,7 @@ const PLAN_GUARD_SKIP = [
   "/terms",
   "/tokushoho",
   "/api",
+  "/admin",
 ];
 
 export async function middleware(request: NextRequest) {

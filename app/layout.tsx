@@ -110,12 +110,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nav = await getNavData();
   const reqHeaders = await headers();
   const pathname = reqHeaders.get("x-pathname") ?? "";
-  const isLP = pathname === "/lp";
+  const isLP    = pathname === "/lp";
+  const isAdmin = pathname.startsWith("/admin");
 
   return (
     <html lang="ja">
       <body className="bg-gray-50 min-h-screen antialiased">
-        {!isLP && nav && (
+        {!isLP && !isAdmin && nav && (
           <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
             <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
               <Link href="/" className="font-bold text-blue-700 text-lg">📒 経費帳簿</Link>
@@ -158,14 +159,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
         )}
-        {isLP ? (
+        {isLP || isAdmin ? (
           children
         ) : (
           <main className="max-w-2xl mx-auto px-4 py-6 pb-20 sm:pb-6">{children}</main>
         )}
 
-        {/* フッター（LP以外） */}
-        {!isLP && (
+        {/* フッター（LP・管理画面以外） */}
+        {!isLP && !isAdmin && (
           <footer className="border-t border-gray-200 bg-white mt-8 pb-20 sm:pb-0">
             <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
               <p>© 2026 keihi. All rights reserved.</p>
