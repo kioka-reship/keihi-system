@@ -2,21 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
-export default function FreeTrialButton({ userId }: { userId: string }) {
+export default function FreeTrialButton({ userId: _userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleFreeTrial() {
     setLoading(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ plan: "free" })
-      .eq("id", userId);
 
-    if (error) {
+    const res = await fetch("/api/plans/activate-free", { method: "POST" });
+
+    if (!res.ok) {
       alert("エラーが発生しました。もう一度お試しください。");
       setLoading(false);
       return;
