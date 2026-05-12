@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
-import AdminActions from "../AdminActions";
+import AdminActions from "../../AdminActions";
 import type { UserRow, ReferralCodeRow } from "./page";
 
 const PLAN_BADGE: Record<string, string> = {

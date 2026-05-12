@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { headers, cookies } from "next/headers";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import AdminExitButton from "./AdminExitButton";
+import AdminExitButton from "../AdminExitButton";
 
 const NAV_ITEMS = [
   { href: "/admin",           label: "📊 ダッシュボード" },
@@ -12,19 +12,12 @@ const NAV_ITEMS = [
   { href: "/admin/referrals", label: "🎟️ 紹介コード管理" },
 ] as const;
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const reqHeaders = await headers();
-  const pathname = reqHeaders.get("x-pathname") ?? "";
-
-  // /admin/login はサイドバー・認証チェック不要
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
-
-  // admin_verified クッキー確認（サーバー側二重チェック）
+export default async function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
+  // admin_verified クッキー確認
   const cookieStore = await cookies();
   if (!cookieStore.get("admin_verified")?.value) redirect("/admin/login");
 
+  // is_admin 確認
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
@@ -40,7 +33,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* サイドバー */}
       <aside className="w-52 bg-gray-900 text-white flex flex-col fixed h-full z-50 shrink-0">
         <div className="p-5 border-b border-gray-800">
           <p className="text-xs text-gray-400 font-medium tracking-wide uppercase">Admin</p>
@@ -61,8 +53,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminExitButton />
         </div>
       </aside>
-
-      {/* メインコンテンツ */}
       <div className="flex-1 ml-52 min-h-screen">
         <div className="p-8 max-w-6xl">
           {children}
