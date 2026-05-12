@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
+import BackupButton from "./BackupButton";
 
 // プラン別バーの色
 const PLAN_COLORS: Record<string, string> = {
@@ -96,9 +97,12 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-sm text-gray-500 mt-1">{yearMonth} · 全ユーザー {allProfiles.length}名</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+          <p className="text-sm text-gray-500 mt-1">{yearMonth} · 全ユーザー {allProfiles.length}名</p>
+        </div>
+        <BackupButton />
       </div>
 
       {/* サマリーカード 4枚 */}
