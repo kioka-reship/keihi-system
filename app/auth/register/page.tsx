@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [referralCode, setReferralCode] = useState("");
   const [error, setError]             = useState("");
   const [loading, setLoading]         = useState(false);
+  const [sent, setSent]               = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,11 +49,11 @@ export default function RegisterPage() {
       body: JSON.stringify({ name, phone, referralCode }),
     });
     if (!res.ok) {
-      // プロフィール保存失敗は致命的ではないのでログのみ（ユーザーはマイページで後から更新可）
       console.error("profile save failed:", await res.text());
     }
 
-    router.push("/plans");
+    setSent(true);
+    setLoading(false);
   }
 
   return (
@@ -64,6 +65,24 @@ export default function RegisterPage() {
           <p className="text-sm text-gray-500 mt-1">白色申告用 経費管理</p>
         </div>
 
+        {sent ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+            <p className="text-3xl mb-4">📧</p>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">確認メールを送信しました</h2>
+            <p className="text-sm text-gray-500 mb-1">
+              登録したメールアドレスに確認メールをお送りしました。
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              メール内のリンクをクリックして、メールアドレスの確認を完了してください。
+            </p>
+            <button
+              onClick={() => router.push("/auth/login")}
+              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
+              ログインページへ
+            </button>
+          </div>
+        ) : (
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-1">新規登録</h2>
           <p className="text-xs text-gray-500 mb-5">無料でお試し3枚まで解析できます</p>
@@ -161,6 +180,7 @@ export default function RegisterPage() {
             に同意したものとみなします。
           </p>
         </div>
+        )}
       </div>
     </div>
   );

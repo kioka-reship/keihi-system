@@ -21,7 +21,11 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError("メールアドレスまたはパスワードが間違っています");
+      setError(
+        error.message.includes("Email not confirmed")
+          ? "メールアドレスの確認が完了していません。登録時に送信されたメールをご確認ください。"
+          : "メールアドレスまたはパスワードが間違っています"
+      );
       setLoading(false);
       return;
     }
