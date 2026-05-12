@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 import Stripe from "stripe";
+import AccountEditor from "./AccountEditor";
 
 const PLAN_LIMITS: Record<string, number> = {
   none: 3, free: 3, light: 20, standard: 40, pro: 120,
@@ -28,7 +29,7 @@ export default async function MyPage() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("plan, monthly_count, stripe_customer_id, extra_credits")
+    .select("plan, monthly_count, stripe_customer_id, extra_credits, name, phone")
     .eq("id", user.id)
     .single();
 
@@ -135,24 +136,12 @@ export default async function MyPage() {
         )}
       </div>
 
-      {/* アカウント情報 */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
-        <p className="text-sm font-semibold text-gray-700">アカウント情報</p>
-        <div className="text-sm text-gray-600 space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-400">メールアドレス</span>
-            <span className="font-medium truncate max-w-[220px]">{user.email}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">プラン</span>
-            <span className="font-medium">{PLAN_NAMES[plan]}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">月間上限</span>
-            <span className="font-medium">{limit}枚</span>
-          </div>
-        </div>
-      </div>
+      {/* アカウント情報（編集・パスワード変更・退会） */}
+      <AccountEditor
+        initialName={profile?.name ?? ""}
+        initialPhone={profile?.phone ?? ""}
+        email={user.email ?? ""}
+      />
 
       {/* 請求履歴 */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
