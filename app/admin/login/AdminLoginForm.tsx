@@ -48,7 +48,10 @@ export default function AdminLoginForm() {
       return;
     }
 
-    // 3. 管理者 → /admin へ
+    // 3. admin_verified クッキーをセット（24時間）
+    document.cookie = "admin_verified=1; path=/; max-age=86400; SameSite=Strict";
+
+    // 4. /admin へ
     router.push("/admin");
   }
 

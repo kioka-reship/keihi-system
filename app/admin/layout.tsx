@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import AdminExitButton from "./AdminExitButton";
 
 const NAV_ITEMS = [
   { href: "/admin",           label: "📊 ダッシュボード" },
@@ -19,6 +20,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
+
+  // admin_verified クッキー確認（サーバー側二重チェック）
+  const cookieStore = await cookies();
+  if (!cookieStore.get("admin_verified")?.value) redirect("/admin/login");
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -53,12 +58,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
         <div className="p-3 border-t border-gray-800">
-          <Link
-            href="/"
-            className="flex items-center px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors w-full"
-          >
-            ← アプリに戻る
-          </Link>
+          <AdminExitButton />
         </div>
       </aside>
 

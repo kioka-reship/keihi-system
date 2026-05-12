@@ -42,6 +42,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
+  // admin_verified クッキー確認（/admin/* 専用・/admin/login は除く）
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
+    const adminVerified = request.cookies.get("admin_verified")?.value;
+    if (!adminVerified) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+  }
+
   // plan=none ガード（スキップ対象パスは除外）
   const isSkipped = PLAN_GUARD_SKIP.some((p) => pathname.startsWith(p));
   if (!isSkipped) {
