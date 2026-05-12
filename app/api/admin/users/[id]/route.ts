@@ -22,12 +22,22 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { plan, extraCredits } = await req.json();
+
+  // 自分自身の is_admin 変更は禁止
+  if (id === user.id) {
+    return NextResponse.json({ error: "自分自身の管理者権限は変更できません" }, { status: 400 });
+  }
+
+  const body = await req.json();
+  const update: Record<string, unknown> = {};
+  if (body.plan !== undefined)        update.plan          = body.plan;
+  if (body.extraCredits !== undefined) update.extra_credits = body.extraCredits;
+  if (body.isAdmin !== undefined)     update.is_admin      = body.isAdmin;
 
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update({ plan, extra_credits: extraCredits })
+    .update(update)
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

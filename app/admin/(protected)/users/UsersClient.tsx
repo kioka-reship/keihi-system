@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { PLAN_CONFIG, PlanKey } from "@/lib/plans";
 import AdminActions from "../../AdminActions";
 import type { UserRow, ReferralCodeRow } from "./page";
@@ -16,12 +17,16 @@ const PLAN_BADGE: Record<string, string> = {
 interface Props {
   users: UserRow[];
   referralCodes: ReferralCodeRow[];
+  currentUserId: string;
 }
 
-export default function UsersClient({ users, referralCodes }: Props) {
+export default function UsersClient({ users, referralCodes, currentUserId }: Props) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [search, setSearch]       = useState("");
   const [planFilter, setPlan]     = useState("");
   const [refFilter, setRef]       = useState("");
+  const [adminLoading, setAdminLoading] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -34,8 +39,19 @@ export default function UsersClient({ users, referralCodes }: Props) {
     });
   }, [users, search, planFilter, refFilter]);
 
+  async function toggleAdmin(userId: string, newIsAdmin: boolean) {
+    setAdminLoading(userId);
+    await fetch(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isAdmin: newIsAdmin }),
+    });
+    setAdminLoading(null);
+    startTransition(() => router.refresh());
+  }
+
   function downloadCSV() {
-    const header = ["氏名", "メール", "電話番号", "プラン", "申し込み日", "紹介コード", "使用枚数"];
+    const header = ["氏名", "メール", "電話番号", "プラン", "申し込み日", "紹介コード", "使用枚数", "管理者"];
     const rows = filtered.map(u => [
       u.full_name ?? u.name ?? "",
       u.email,
@@ -44,6 +60,7 @@ export default function UsersClient({ users, referralCodes }: Props) {
       new Date(u.created_at).toLocaleDateString("ja-JP"),
       u.referred_by ?? "",
       String(u.monthly_count),
+      u.is_admin ? "yes" : "",
     ]);
     const csv = [header, ...rows]
       .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -100,10 +117,10 @@ export default function UsersClient({ users, referralCodes }: Props) {
       {/* テーブル */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[900px]">
+          <table className="w-full text-xs min-w-[1000px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-gray-500">
-                {["氏名", "メール", "電話番号", "プラン", "申し込み日", "紹介コード", "使用枚数", "操作"].map(h => (
+                {["氏名", "メール", "電話番号", "プラン", "申し込み日", "紹介コード", "使用枚数", "管理者", "操作"].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -113,10 +130,17 @@ export default function UsersClient({ users, referralCodes }: Props) {
                 const planKey = (u.plan || "none") as PlanKey;
                 const cfg = PLAN_CONFIG[planKey] ?? PLAN_CONFIG.none;
                 const displayName = u.full_name ?? u.name;
+                const isSelf = u.id === currentUserId;
+                const isAdminLoading = adminLoading === u.id;
                 return (
                   <tr key={u.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">
-                      {displayName ?? <span className="text-gray-300">—</span>}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="font-medium text-gray-800">
+                        {displayName ?? <span className="text-gray-300">—</span>}
+                      </span>
+                      {isSelf && (
+                        <span className="ml-1.5 text-[10px] text-gray-400 font-normal">（自分）</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600 max-w-[180px] truncate">{u.email}</td>
                     <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap">
@@ -137,14 +161,38 @@ export default function UsersClient({ users, referralCodes }: Props) {
                       {u.monthly_count}/{cfg.monthlyLimit}枚
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <AdminActions userId={u.id} currentPlan={planKey} currentExtra={u.extra_credits} />
+                      {u.is_admin ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                          管理者
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <AdminActions userId={u.id} currentPlan={planKey} currentExtra={u.extra_credits} />
+                        {!isSelf && (
+                          <button
+                            onClick={() => toggleAdmin(u.id, !u.is_admin)}
+                            disabled={isAdminLoading || isPending}
+                            className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap ${
+                              u.is_admin
+                                ? "border border-red-300 text-red-600 hover:bg-red-50"
+                                : "border border-gray-300 text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {isAdminLoading ? "…" : u.is_admin ? "管理者を外す" : "管理者にする"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                     該当するユーザーが見つかりません
                   </td>
                 </tr>

@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import UsersClient from "./UsersClient";
 
@@ -23,6 +24,9 @@ export interface ReferralCodeRow {
 }
 
 export default async function AdminUsersPage() {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
   const admin = createAdminClient();
 
   const { data: users } = await admin
@@ -45,7 +49,11 @@ export default async function AdminUsersPage() {
         <h1 className="text-2xl font-bold text-gray-900">ユーザー管理</h1>
         <p className="text-sm text-gray-500 mt-1">全 {(users ?? []).length}名</p>
       </div>
-      <UsersClient users={(users ?? []) as UserRow[]} referralCodes={referralCodes} />
+      <UsersClient
+        users={(users ?? []) as UserRow[]}
+        referralCodes={referralCodes}
+        currentUserId={currentUser?.id ?? ""}
+      />
     </div>
   );
 }

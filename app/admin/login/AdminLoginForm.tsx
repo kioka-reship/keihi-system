@@ -41,7 +41,6 @@ export default function AdminLoginForm() {
       .single();
 
     if (!profile?.is_admin) {
-      // 管理者でない場合はログアウトしてエラー表示
       await supabase.auth.signOut();
       setError("管理者権限がありません");
       setLoading(false);
