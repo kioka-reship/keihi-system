@@ -2,31 +2,40 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export default function UpdatePasswordPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (password !== confirm) {
+      setError("パスワードが一致しません");
+      return;
+    }
+    if (password.length < 8) {
+      setError("パスワードは8文字以上で入力してください");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      setError("メールアドレスまたはパスワードが間違っています");
+      setError("パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります");
       setLoading(false);
       return;
     }
 
-    router.push("/");
+    router.push("/auth/login");
   }
 
   return (
@@ -39,7 +48,8 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-5">ログイン</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-1">新しいパスワードを設定</h2>
+          <p className="text-xs text-gray-500 mb-5">8文字以上で入力してください</p>
 
           {error && (
             <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm mb-4 border border-red-200">
@@ -50,20 +60,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                メールアドレス
-              </label>
-              <input
-                type="email"
-                required
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                パスワード
+                新しいパスワード（8文字以上）
               </label>
               <input
                 type="password"
@@ -74,26 +71,27 @@ export default function LoginPage() {
                 placeholder="••••••••"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                パスワード（確認）
+              </label>
+              <input
+                type="password"
+                required
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {loading ? "ログイン中…" : "ログイン"}
+              {loading ? "更新中…" : "パスワードを更新"}
             </button>
           </form>
-
-          <p className="text-center text-xs text-gray-500 mt-4">
-            <Link href="/auth/reset-password" className="text-gray-400 hover:text-blue-600 hover:underline">
-              パスワードをお忘れの方
-            </Link>
-          </p>
-          <p className="text-center text-xs text-gray-500 mt-2">
-            アカウントをお持ちでない方は{" "}
-            <Link href="/auth/register" className="text-blue-600 hover:underline">
-              新規登録
-            </Link>
-          </p>
         </div>
       </div>
     </div>
