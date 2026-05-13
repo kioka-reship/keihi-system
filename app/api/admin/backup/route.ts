@@ -25,22 +25,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "管理者権限が必要です" }, { status: 403 });
   }
 
-  // profiles テーブル全件取得
-  const { data: profiles, error } = await adminClient
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // profiles・expenses テーブル全件取得
+  const [{ data: profiles, error: profilesError }, { data: expenses, error: expensesError }] =
+    await Promise.all([
+      adminClient.from("profiles").select("*").order("created_at", { ascending: false }),
+      adminClient.from("expenses").select("*").order("created_at", { ascending: false }),
+    ]);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (profilesError) {
+    return NextResponse.json({ error: profilesError.message }, { status: 500 });
+  }
+  if (expensesError) {
+    return NextResponse.json({ error: expensesError.message }, { status: 500 });
   }
 
   const date = new Date().toISOString().slice(0, 10);
   const payload = {
     exported_at: new Date().toISOString(),
-    table: "profiles",
-    count: profiles?.length ?? 0,
-    data: profiles ?? [],
+    tables: {
+      profiles: { count: profiles?.length ?? 0, data: profiles ?? [] },
+      expenses: { count: expenses?.length ?? 0, data: expenses ?? [] },
+    },
   };
 
   return new NextResponse(JSON.stringify(payload, null, 2), {
