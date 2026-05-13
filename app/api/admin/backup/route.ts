@@ -25,26 +25,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "管理者権限が必要です" }, { status: 403 });
   }
 
-  // profiles・expenses テーブル全件取得
-  const [{ data: profiles, error: profilesError }, { data: expenses, error: expensesError }] =
+  // profiles・referral_codes テーブル全件取得
+  const [{ data: profiles, error: profilesError }, { data: referralCodes, error: referralCodesError }] =
     await Promise.all([
       adminClient.from("profiles").select("*").order("created_at", { ascending: false }),
-      adminClient.from("expenses").select("*").order("created_at", { ascending: false }),
+      adminClient.from("referral_codes").select("*").order("created_at", { ascending: false }),
     ]);
 
   if (profilesError) {
     return NextResponse.json({ error: profilesError.message }, { status: 500 });
   }
-  if (expensesError) {
-    return NextResponse.json({ error: expensesError.message }, { status: 500 });
+  if (referralCodesError) {
+    return NextResponse.json({ error: referralCodesError.message }, { status: 500 });
   }
 
   const date = new Date().toISOString().slice(0, 10);
   const payload = {
     exported_at: new Date().toISOString(),
     tables: {
-      profiles: { count: profiles?.length ?? 0, data: profiles ?? [] },
-      expenses: { count: expenses?.length ?? 0, data: expenses ?? [] },
+      profiles:      { count: profiles?.length ?? 0,      data: profiles      ?? [] },
+      referral_codes: { count: referralCodes?.length ?? 0, data: referralCodes ?? [] },
     },
   };
 
